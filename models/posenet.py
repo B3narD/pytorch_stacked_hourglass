@@ -116,6 +116,7 @@ class PatchToGlobal(nn.Module):
         return global_heatmap
 
 
+
 class MLPPoseNet(nn.Module):
     def __init__(self, nstack, channels_dim, num_patches=196, heatmap_size=(8, 8), image_size=224):
         super(MLPPoseNet, self).__init__()
@@ -133,24 +134,27 @@ class MLPPoseNet(nn.Module):
             MixerBlock(num_patches, channels_dim)
             for i in range(nstack)])
 
-        self.outs = nn.ModuleList([nn.Sequential(PatchToHeatmap(channels_dim, 16, heatmap_size), PatchToGlobal(14, 16)) for _ in range(nstack)])
+        self.outs = nn.ModuleList([nn.Sequential(PatchToHeatmap(channels_dim, 16, heatmap_size), PatchToGlobal(, 16)) for _ in range(nstack)])
+
         # self.outs = nn.ModuleList([Conv(inp_dim, oup_dim, 1, relu=False, bn=False) for i in range(nstack)])
-        self.merge_features = nn.ModuleList([MixerBlock(num_patches, channels_dim) for i in range(nstack - 1)])
-        self.merge_preds = nn.ModuleList([nn.Sequential(Merge(16, 3), PatchEmbed(heatmap_size[0]*heatmap_size[1], patch_size, channels_dim)) for i in range(nstack - 1)])
+        self.merge_features = nn.ModuleList(
+            [MixerBlock(num_patches, channels_dim) for i in range(nstack - 1)])
+        self.merge_preds = nn.ModuleList(
+            [nn.Sequential(Conv(16, 16), PatchEmbed(heatmap_size[0]*heatmap_size[1], patch_size, channels_dim)) for i in range(nstack - 1)])
         self.nstack = nstack
         self.heatmapLoss = HeatmapLoss()
 
     def forward(self, imgs):
         ## our posenet
         # x of size 1,3,inpdim,inpdim
-        print(imgs.shape)
+        #print(imgs.shape)
         x = self.pre(imgs)
-        print(x.shape)
+        print('pre', x.shape)
         # (batchSize, patch, channels) -> (64, 196, 768)
         combined_hm_preds = []
         for i in range(self.nstack):
             hg = self.hgs[i](x)
-            print(hg.shape)
+            print('h',i,':',hg.shape)
             feature = self.features[i](hg)
             print(feature.shape)
             preds = self.outs[i](feature)
@@ -179,7 +183,7 @@ if __name__ == '__main__':
     device = torch.device("cuda")
     net = MLPPoseNet(2, 768).to(device)
     #net = MLPPoseNet(6, 224, )
-    inp = torch.randn(64, 3, 224, 224).to(device)
+    inp = torch.randn(32, 3, 224, 224).to(device)
     #out = net2(inp2)
     out2 = net(inp)
     #out2 = net2(out)
